@@ -1,0 +1,34 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./analysis_ball:/app/analysis_ball
+      - ./constants:/app/constants
+      - ./court_line_detector:/app/court_line_detector
+      - ./genai:/app/genai
+      - ./input_files:/app/input_files
+      - ./mini_court:/app/mini_court
+      - ./models:/app/models
+      - ./output_files:/app/output_files
+      - ./runs:/app/runs:rw
+      - ./trackers:/app/trackers
+      - ./tracker_stubs:/app/tracker_stubs
+      - ./training:/app/training
+      - ./utils:/app/utils
+      - ./templates:/app/templates
+      - ./static:/app/static
+      - ./main.py:/app/main.py
+      - ./requirements.txt:/app/requirements.txt
+      - ./rich-suprstate-442213-c5-7550f7495a7a.json:/app/rich-suprstate-442213-c5-7550f7495a7a.json
+      - ./yolo_inference.py:/app/yolo_inference.py
+    environment:
+      - PYTHONPATH=/app
+    deploy:
+      resources:
+        limits:
+          memory: 8G  # Adjust based on your needs
+        reservations:
+          memory: 4G
+    restart: unless-stopped

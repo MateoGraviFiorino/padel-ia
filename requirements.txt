@@ -1,0 +1,14 @@
+ultralytics
+torch --index-url https://download.pytorch.org/whl/cpu
+pandas
+numpy
+sympy
+vertexai
+google-auth
+fastapi
+uvicorn
+requests
+pydantic
+python-multipart
+aiofiles
+jinja2

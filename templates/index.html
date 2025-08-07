@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tennis Video Analysis</title>
+    <!-- Add Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Tennis-inspired color palette */
+            --tennis-green: #2B5C3B;
+            --tennis-court: #3B7C4F;
+            --tennis-ball: #CDE43A;
+            --white-line: #FFFFFF;
+            --dark-navy: #1A2A3A;
+            --accent-gold: #D4AF37;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--tennis-green) 0%, var(--tennis-court) 100%);
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            position: relative;
+        }
+
+        .header::after {
+            content: '🎾';
+            font-size: 2em;
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .header::before {
+            content: '🎾';
+            font-size: 2em;
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .header h1 {
+            color: var(--white-line);
+            font-family: 'Roboto Condensed', sans-serif;
+            font-size: 3em;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            color: var(--tennis-ball);
+            font-size: 1.2em;
+            max-width: 600px;
+            margin: 0 auto;
+            font-weight: 500;
+        }
+
+        .upload-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            text-align: center;
+            margin-bottom: 30px;
+            border: 3px solid var(--tennis-ball);
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: var(--accent-gold);
+            transform: translateY(-2px);
+        }
+
+        .file-input-container {
+            margin: 20px 0;
+        }
+
+        .custom-file-input {
+            display: inline-block;
+            cursor: pointer;
+            padding: 12px 24px;
+            background: var(--dark-navy);
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            color: var(--white-line);
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .custom-file-input:hover {
+            background: var(--tennis-green);
+            transform: translateY(-2px);
+        }
+
+        .analyze-btn {
+            background: var(--tennis-court);
+            color: var(--white-line);
+            border: none;
+            padding: 12px 35px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .analyze-btn:hover {
+            background: var(--tennis-green);
+            transform: translateY(-2px);
+        }
+
+        .analyze-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border: 3px solid var(--tennis-ball);
+        }
+
+        .video-container {
+            width: 100%;
+            background: var(--dark-navy);
+            position: relative;
+            border-bottom: 3px solid var(--tennis-ball);
+        }
+
+        video {
+            width: 100%;
+            display: block;
+        }
+
+        .analysis-container {
+            padding: 30px;
+            background: white;
+        }
+
+        .analysis-container h2 {
+            color: var(--tennis-green);
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            font-family: 'Roboto Condensed', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid var(--tennis-ball);
+            padding-bottom: 10px;
+        }
+
+        #analysis-content {
+            line-height: 1.8;
+            color: var(--dark-navy);
+            font-size: 1.1em;
+            padding: 20px;
+            background: rgba(205, 228, 58, 0.1);
+            border-radius: 8px;
+        }
+
+        .file-name {
+            margin-top: 15px;
+            color: var(--tennis-green);
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: var(--tennis-court);
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .loading::after {
+            content: '🎾';
+            display: inline-block;
+            margin-left: 10px;
+            animation: bounce 0.6s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Tennis Video Analysis</h1>
+            <p>Powered by AI. Made by: Marco Aloisi</p>
+        </div>
+
+        <div class="upload-section">
+            <form id="upload-form">
+                <div class="file-input-container">
+                    <input type="file" 
+                           id="video-file" 
+                           accept="video/*" 
+                           required 
+                           style="display:none"
+                           onchange="updateFileName()">
+                    <label for="video-file" class="custom-file-input">Selecciona Video</label>
+                    <button type="submit" class="analyze-btn" disabled id="analyze-btn">
+                        Analizar Video
+                    </button>
+                </div>
+                <div class="file-name" id="file-name">Archivo no seleccionado</div>
+            </form>
+            <div class="loading" id="loading">Analizando el punto...</div>
+        </div>
+
+        <div class="results" id="results">
+            <div class="video-container">
+                <video id="video-player" controls preload="auto" width="100%">
+                    Your browser does not support video playback.
+                </video>
+            </div>
+            </div>
+            <div class="analysis-container">
+                <h2>Analisis del Punto</h2>
+                <div id="analysis-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Your existing JavaScript code remains the same
+        function updateFileName() {
+            const fileInput = document.getElementById('video-file');
+            const fileName = document.getElementById('file-name');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            
+            if (fileInput.files.length > 0) {
+                fileName.textContent = fileInput.files[0].name;
+                analyzeBtn.disabled = false;
+            } else {
+                fileName.textContent = 'No file selected';
+                analyzeBtn.disabled = true;
+            }
+        }
+
+        document.getElementById('upload-form').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const fileField = document.getElementById('video-file');
+            const loading = document.getElementById('loading');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const results = document.getElementById('results');
+            
+            formData.append('file', fileField.files[0]);
+            
+            try {
+                loading.style.display = 'block';
+                analyzeBtn.disabled = true;
+                results.style.display = 'none';
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                console.log('Response:', result);
+                
+                if (result.status === 'success') {
+                    const videoPlayer = document.getElementById('video-player');
+                    const videoSources = videoPlayer.getElementsByTagName('source');
+                    
+                    videoPlayer.pause();
+                    videoPlayer.removeAttribute('src');
+                    videoPlayer.load();
+
+                    console.log('Setting video URL to:', result.video_url);
+                    
+                    for (let source of videoSources) {
+                        source.src = result.video_url;
+                    }
+                    
+                    videoPlayer.src = result.video_url;
+                    
+                    videoPlayer.onerror = function() {
+                        console.error('Error loading video:', videoPlayer.error);
+                        alert('Error loading video: ' + videoPlayer.error.message);
+                    };
+                    
+                    videoPlayer.onloadeddata = function() {
+                        console.log('Video loaded successfully');
+                    };
+                    
+                    videoPlayer.load();
+                    
+                    const analysisContent = document.getElementById('analysis-content');
+                    if (typeof result.analysis === 'string') {
+                        analysisContent.textContent = result.analysis;
+                    } else {
+                        analysisContent.textContent = result.analysis.analysis || JSON.stringify(result.analysis);
+                    }
+
+                    results.style.display = 'block';
+                    results.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error uploading video: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
