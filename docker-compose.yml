@@ -21,7 +21,7 @@ services:
       - ./static:/app/static
       - ./main.py:/app/main.py
       - ./requirements.txt:/app/requirements.txt
-      - ./rich-suprstate-442213-c5-7550f7495a7a.json:/app/rich-suprstate-442213-c5-7550f7495a7a.json
+      - ./neat-fin-468000-i5-ddabf952e9d8.json
       - ./yolo_inference.py:/app/yolo_inference.py
     environment:
       - PYTHONPATH=/app

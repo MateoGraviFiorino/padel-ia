@@ -1,0 +1,31 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[[source]]
+url = "https://download.pytorch.org/whl/cpu"
+verify_ssl = true
+name = "pytorch"
+
+[packages]
+ultralytics = "*"
+torch = {index = "pytorch", version = "*"}
+pandas = "*"
+numpy = "*"
+sympy = "*"
+vertexai = "*"
+google-auth = "*"
+fastapi = "*"
+uvicorn = "*"
+requests = "*"
+pydantic = "*"
+python-multipart = "*"
+aiofiles = "*"
+jinja2 = "*"
+opencv-python = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"

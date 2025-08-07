@@ -39,7 +39,7 @@ async def analyze_video(file: UploadFile = File(...)):
             buffer.write(content)
         
         # Generate analysis
-        credentials_path = "rich-suprstate-442213-c5-7550f7495a7a.json"
+        credentials_path = "neat-fin-468000-i5-ddabf952e9d8.json"
         bucket_name = "tennis-data-marcoaloisi"
         analysis = analyze_tennis_video(output_path, credentials_path, bucket_name)
 
