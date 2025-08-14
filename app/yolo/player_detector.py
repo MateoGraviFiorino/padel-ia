@@ -7,7 +7,7 @@ from dataclasses import dataclass
 @dataclass
 class PlayerYoloDetector(TemplateYoloDetector):
     model_path: str = Settings.PLAYER_MODEL_PATH
-    model_treshold: float = 0.25
+    model_treshold: float = 0.60
 
     @property
     def load_model(self):
