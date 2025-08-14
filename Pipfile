@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+ultralytics = "*"
+pydantic-settings = "*"
+tqdm = "*"
+
+[dev-packages]
+pre-commit = "==4.2.0"
+ipykernel = "==6.29.5"
+
+[requires]
+python_version = "3.12"
