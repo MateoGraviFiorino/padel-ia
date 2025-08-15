@@ -28,3 +28,7 @@ class AbstractYoloDetector(ABC):
     @abstractmethod
     def process_video(self, video_path: str) -> DetectionResultVideo:
         pass
+
+    @abstractmethod
+    def process_video_with_output(self, video_path: str, output_path: str = None) -> DetectionResultVideo:
+        pass
