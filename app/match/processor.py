@@ -7,31 +7,26 @@ import numpy as np
 from pydantic import BaseModel, Field
 from app.yolo.player_detector import PlayerYoloDetector
 from app.yolo.ball_detector import BallYoloDetector
-from app.data_models import DetectionResultFrame, DetectionResultVideo
+from app.data_models import DetectionResultFrame, DetectionResultVideo, HitEvent, MatchStatistics
+from typing import TypeVar, Sequence
+from pydantic import BaseModel
+
+T = TypeVar("T", bound=DetectionResultFrame)
 
 
-class HitEvent(BaseModel):
+class HitCandidate(BaseModel):
     player_id: str
-    frame_number: int
-    timestamp: float
-    player_confidence: float
-    ball_confidence: float
-    player_box: list[float]
-    ball_box: list[float]
-
-
-class MatchStatistics(BaseModel):
-    total_hits: int = Field(default=0)
-    hits_per_player: dict[str, int] = Field(default_factory=dict)
-    total_frames: int = Field(default=0)
-    video_duration: float = Field(default=0.0)
-    fps: float = Field(default=0.0)
-
+    player_detection: DetectionResultFrame
+    ball_detection: DetectionResultFrame
+    distance: float
+    score: float
 
 @dataclass
 class PadelMatchProcessor:
-    hit_distance_threshold: float = 80.0
-    min_frames_between_hits: int = 10
+    hit_distance_threshold: float = 80.0 
+    min_distance_threshold: float = 30.0 
+    min_frames_between_hits: int = 10  
+    min_confidence_threshold: float = 0.6 
     player_detector: PlayerYoloDetector = field(default_factory=PlayerYoloDetector)
     ball_detector: BallYoloDetector = field(default_factory=BallYoloDetector)
     match_stats: MatchStatistics = field(default_factory=MatchStatistics)
@@ -48,59 +43,89 @@ class PadelMatchProcessor:
         ball_center_x = (ball_box[0] + ball_box[2]) / 2
         ball_center_y = (ball_box[1] + ball_box[3]) / 2
         
-        # Distancia euclidiana
         distance = ((player_center_x - ball_center_x) ** 2 + (player_center_y - ball_center_y) ** 2) ** 0.5
         return distance
-    
+
+    def _filter_detections(self, detections: Sequence[T]) -> list[T]:
+        return [detection for detection in detections if detection.confidence >= self.min_confidence_threshold]
+
     def _detect_hits_in_frame(self, frame: ndarray, frame_number: int, timestamp: float) -> list[HitEvent]:
-        hits = []
+        hits: list[HitEvent] = []
         
         if frame is None:
             return hits
         
-        try:
-            player_detections = self.player_detector.process_frame(frame)
-            ball_detections = self.ball_detector.process_frame(frame)
-        except Exception as e:
-            print(f"Error procesando frame {frame_number}: {e}")
+        player_detections = self.player_detector.process_frame(frame)
+        ball_detections = self.ball_detector.process_frame(frame)
+
+        valid_player_detections = self._filter_detections(player_detections)
+        valid_ball_detections = self._filter_detections(ball_detections)
+        
+        if not valid_ball_detections or not valid_player_detections:
             return hits
         
-        if not ball_detections:
-            return hits
+        hit_candidates: list[HitCandidate] = []
         
-        for player_detection in player_detections:
+        for player_detection in valid_player_detections:
             player_id = player_detection.class_id
             
-            # Verificar si este jugador ya golpeó recientemente
             if player_id in self.last_hit_frame:
                 frames_since_last_hit = frame_number - self.last_hit_frame[player_id]
                 if frames_since_last_hit < self.min_frames_between_hits:
                     continue
             
-            # Buscar la pelota más cercana a este jugador
             best_distance = float('inf')
             best_ball_detection = None
             
-            for ball_detection in ball_detections:
+            for ball_detection in valid_ball_detections:
                 distance = self._calculate_distance(player_detection.box, ball_detection.box)
                 if distance < best_distance:
                     best_distance = distance
                     best_ball_detection = ball_detection
             
-            # Si el jugador está suficientemente cerca de la pelota, es un golpe
-            if best_distance < self.hit_distance_threshold and best_ball_detection is not None:
+            if (self.min_distance_threshold <= best_distance <= self.hit_distance_threshold 
+                and best_ball_detection is not None):
+                
+                distance_score = 1.0 - (best_distance / self.hit_distance_threshold)
+                confidence_score = (player_detection.confidence + best_ball_detection.confidence) / 2
+                total_score = distance_score * confidence_score
+
+                hit_candidates.append(
+                    HitCandidate(
+                        player_id=player_id,
+                        player_detection=player_detection,
+                        ball_detection=best_ball_detection,
+                        distance=best_distance,
+                        score=total_score
+                    )
+                )
+        
+        hit_candidates.sort(key=lambda x: x.score, reverse=True)
+        
+        used_players = set()
+        used_ball_boxes = set()
+        
+        for candidate in hit_candidates:
+            player_id = candidate.player_id
+            ball_detection = candidate.ball_detection
+            
+            ball_box_tuple = tuple(ball_detection.box)
+            
+            if player_id not in used_players and ball_box_tuple not in used_ball_boxes:
                 hit_event = HitEvent(
                     player_id=player_id,
                     frame_number=frame_number,
                     timestamp=timestamp,
-                    player_confidence=player_detection.confidence,
-                    ball_confidence=best_ball_detection.confidence,
-                    player_box=player_detection.box,
-                    ball_box=best_ball_detection.box
+                    player_confidence=candidate.player_detection.confidence,
+                    ball_confidence=ball_detection.confidence,
+                    player_box=candidate.player_detection.box,
+                    ball_box=ball_detection.box
                 )
                 hits.append(hit_event)
+
+                used_players.add(player_id)
+                used_ball_boxes.add(ball_box_tuple)
                 
-                # Actualizar el último frame donde este jugador golpeó
                 self.last_hit_frame[player_id] = frame_number
         
         return hits
@@ -117,7 +142,6 @@ class PadelMatchProcessor:
         fps = cap.get(cv2.CAP_PROP_FPS)
         duration = total_frames / fps if fps > 0 else 0
         
-        # Reiniciar estadísticas y estado interno
         self.hit_events.clear()
         self.last_hit_frame.clear()
         self.match_stats = MatchStatistics(
@@ -126,53 +150,35 @@ class PadelMatchProcessor:
             fps=fps
         )
         
-        print(f"Procesando video: {video_path}")
-        print(f"Frames: {total_frames}, FPS: {fps:.2f}, Duración: {duration:.2f}s")
-        print(f"Umbral de distancia: {self.hit_distance_threshold}px, Mínimo frames entre golpes: {self.min_frames_between_hits}")
-        
-        try:
-            with tqdm(total=total_frames, desc="Analizando partido", unit="frames") as pbar:
-                frame_number = 0
+        with tqdm(total=total_frames, desc="Analizando partido", unit="frames") as pbar:
+            frame_number = 0
+            
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
                 
-                while cap.isOpened():
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
-                    
-                    timestamp = frame_number / fps if fps > 0 else 0
-                    
-                    # Detectar golpes en este frame
-                    frame_hits = self._detect_hits_in_frame(frame, frame_number, timestamp)
-                    self.hit_events.extend(frame_hits)
-                    
-                    frame_number += 1
-                    pbar.update(1)
-                    
-                    # Actualizar descripción con golpes detectados
-                    if frame_hits:
-                        pbar.set_description(f"Analizando partido (Golpes: {len(self.hit_events)})")
-        
-        except Exception as e:
-            print(f"Error durante el procesamiento: {e}")
-            raise
-        finally:
-            cap.release()
-        
-        # Calcular estadísticas finales
+                timestamp = frame_number / fps if fps > 0 else 0
+                
+                frame_hits = self._detect_hits_in_frame(frame, frame_number, timestamp)
+                self.hit_events.extend(frame_hits)
+                
+                frame_number += 1
+                pbar.update(1)
+                
+                if frame_hits:
+                    pbar.set_description(f"Analizando partido (Golpes: {len(self.hit_events)})")
+
         self._calculate_final_statistics()
         
         return self.match_stats
     
-    def process_video_with_output(self, video_path: str, output_path: str = None) -> MatchStatistics:
-        """
-        Procesa un video y genera un video de salida con anotaciones visuales
-        """
+    def process_video_with_output(self, video_path: str, output_path: str) -> MatchStatistics:
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Video no encontrado: {video_path}")
         
         if output_path is None:
-            base_name = os.path.splitext(os.path.basename(video_path))[0]
-            output_path = f"data/output_{base_name}_match_analyzed.mp4"
+            raise ValueError("No output_path provided")
         
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
@@ -184,11 +190,9 @@ class PadelMatchProcessor:
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         duration = total_frames / fps if fps > 0 else 0
         
-        # Configurar video writer
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
         
-        # Reiniciar estadísticas y estado interno
         self.hit_events.clear()
         self.last_hit_frame.clear()
         self.match_stats = MatchStatistics(
@@ -199,7 +203,11 @@ class PadelMatchProcessor:
         
         print(f"Procesando video: {video_path}")
         print(f"Frames: {total_frames}, FPS: {fps:.2f}, Duración: {duration:.2f}s")
-        print(f"Umbral de distancia: {self.hit_distance_threshold}px, Mínimo frames entre golpes: {self.min_frames_between_hits}")
+        print(f"Parámetros de detección:")
+        print(f"  - Distancia máxima: {self.hit_distance_threshold}px")
+        print(f"  - Distancia mínima: {self.min_distance_threshold}px")
+        print(f"  - Frames entre golpes: {self.min_frames_between_hits}")
+        print(f"  - Confianza mínima: {self.min_confidence_threshold}")
         
         try:
             with tqdm(total=total_frames, desc="Analizando partido con output", unit="frames") as pbar:
@@ -295,16 +303,12 @@ class PadelMatchProcessor:
             cap.release()
             out.release()
         
-        # Calcular estadísticas finales
         self._calculate_final_statistics()
         
         print(f"Video procesado guardado en: {output_path}")
         return self.match_stats
     
     def _calculate_final_statistics(self) -> None:
-        """
-        Calcula las estadísticas finales basadas en los eventos de golpe detectados
-        """
         self.match_stats.total_hits = len(self.hit_events)
         
         for hit in self.hit_events:
@@ -315,8 +319,6 @@ class PadelMatchProcessor:
 
         return self.print_statistics()
     
-    def get_hit_events(self) -> list[HitEvent]:
-        return self.hit_events
     
     def print_statistics(self) -> None:
         """
