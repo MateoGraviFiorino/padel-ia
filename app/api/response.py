@@ -17,6 +17,6 @@ class APIInfoResponse(BaseModel):
     name: str
     version: str
     description: str
-    endpoints: Dict[str, str]
+    endpoints: dict[str, str]
     models_loaded: bool
     data_directory: str

@@ -13,7 +13,7 @@ import os
 @dataclass
 class BallYoloDetector(AbstractYoloDetector):
     model_path: str = Settings.BALL_MODEL_PATH
-    model_threshold: float = 0.15
+    model_threshold: float = 0.50
 
     @property
     def load_model(self):

@@ -3,22 +3,20 @@ import cv2
 from tqdm import tqdm
 import os
 from numpy import ndarray
-import numpy as np
-from pydantic import BaseModel, Field
 from app.yolo.player_detector import PlayerYoloDetector
 from app.yolo.ball_detector import BallYoloDetector
-from app.data_models import DetectionResultFrame, DetectionResultVideo, HitEvent, MatchStatistics
+from app.data_models import DetectionResultFrame, HitEvent, MatchStatistics, HitCandidate
 from typing import TypeVar, Sequence
-from pydantic import BaseModel
+
 
 T = TypeVar("T", bound=DetectionResultFrame)
 
 @dataclass
 class PadelMatchProcessor:
-    hit_distance_threshold: float = 80.0 
+    hit_distance_threshold: float = 70.0 
     min_distance_threshold: float = 30.0 
-    min_frames_between_hits: int = 10  
-    min_confidence_threshold: float = 0.6 
+    min_frames_between_hits: int = 25  
+    min_confidence_threshold: float = 0.75 
     player_detector: PlayerYoloDetector = field(default_factory=PlayerYoloDetector)
     ball_detector: BallYoloDetector = field(default_factory=BallYoloDetector)
     match_stats: MatchStatistics = field(default_factory=MatchStatistics)
