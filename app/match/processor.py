@@ -13,14 +13,6 @@ from pydantic import BaseModel
 
 T = TypeVar("T", bound=DetectionResultFrame)
 
-
-class HitCandidate(BaseModel):
-    player_id: str
-    player_detection: DetectionResultFrame
-    ball_detection: DetectionResultFrame
-    distance: float
-    score: float
-
 @dataclass
 class PadelMatchProcessor:
     hit_distance_threshold: float = 80.0 
@@ -135,6 +127,7 @@ class PadelMatchProcessor:
             raise FileNotFoundError(f"Video no encontrado: {video_path}")
         
         cap = cv2.VideoCapture(video_path)
+        
         if not cap.isOpened():
             raise ValueError(f"No se pudo abrir el video: {video_path}")
         

@@ -10,3 +10,11 @@ class DetectionResultFrame(BaseModel):
 
 class DetectionResultVideo(BaseModel):
     frame_detections: list[DetectionResultFrame]
+
+
+class HitCandidate(BaseModel):
+    player_id: str
+    player_detection: DetectionResultFrame
+    ball_detection: DetectionResultFrame
+    distance: float
+    score: float

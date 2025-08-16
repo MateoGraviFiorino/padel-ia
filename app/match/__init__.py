@@ -1,3 +1,3 @@
-from .processor import PadelMatchProcessor, HitEvent, MatchStatistics
+from .processor import PadelMatchProcessor
 
-__all__ = ['PadelMatchProcessor', 'HitEvent', 'MatchStatistics']
+__all__ = ['PadelMatchProcessor']

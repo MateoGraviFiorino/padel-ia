@@ -4,9 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-ultralytics = "*"
-pydantic-settings = "*"
-tqdm = "*"
+ultralytics = "==8.3.179"
+pydantic-settings = "==2.10.1"
+fastapi = "==0.116.1"
+tqdm = "==4.67.1"
+torch = "==2.8.0"
+torchvision = "==0.23.0"
 
 [dev-packages]
 pre-commit = "==4.2.0"
