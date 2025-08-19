@@ -1,17 +1,18 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Menu, X, BarChart3, Video, Users, Trophy } from "lucide-react";
+import { Menu, X, BarChart3, Video, Users, Trophy, Home, Target, Clock } from "lucide-react";
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems = [
-    { name: "Inicio", href: "/", icon: BarChart3 },
-    { name: "Analytics", href: "/analytics", icon: BarChart3 },
-    { name: "Videos", href: "/videos", icon: Video },
+    { name: "Inicio", href: "/", icon: Home },
+    { name: "Análisis", href: "/analytics", icon: BarChart3 },
+    { name: "Mis Partidos", href: "/matches", icon: Video },
     { name: "Jugadores", href: "/players", icon: Users },
-    { name: "Estadísticas", href: "/stats", icon: Trophy },
+    { name: "Estadísticas", href: "/stats", icon: Target },
+    { name: "Historial", href: "/history", icon: Clock },
   ];
 
   return (
@@ -21,7 +22,7 @@ const NavBar = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-white" />
+              <span className="text-white font-bold text-lg">🎾</span>
             </div>
             <span className="text-xl font-bold text-white">PadelAI</span>
           </Link>
@@ -46,7 +47,7 @@ const NavBar = () => {
               to="/upload"
               className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-2 rounded-full hover:from-green-600 hover:to-blue-600 transition-all duration-200 transform hover:scale-105"
             >
-              Analizar Video
+              Analizar Partido
             </Link>
           </div>
 
@@ -84,7 +85,7 @@ const NavBar = () => {
                 onClick={() => setIsOpen(false)}
                 className="block w-full bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-full text-center hover:from-green-600 hover:to-blue-600 transition-all duration-200"
               >
-                Analizar Video
+                Analizar Partido
               </Link>
             </div>
           </motion.div>

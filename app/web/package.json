@@ -1,5 +1,24 @@
 {
+  "name": "padel-ai-web",
+  "version": "1.0.0",
+  "description": "Frontend web application for PadelAI - AI-powered padel analysis",
+  "private": true,
   "dependencies": {
     "react-router-dom": "^6.26.1"
-  }
+  },
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "install-frontend": "cd frontend && npm install"
+  },
+  "keywords": [
+    "padel",
+    "ai",
+    "analytics",
+    "video-analysis",
+    "sports",
+    "react"
+  ],
+  "author": "PadelAI Team",
+  "license": "MIT"
 }

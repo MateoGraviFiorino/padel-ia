@@ -299,6 +299,162 @@ class PadelMatchProcessor:
         print(f"Video procesado guardado en: {output_path}")
         return self.match_stats
     
+    def process_video_optimized(self, video_path: str, output_path: str = None, sample_rate: int = 5) -> MatchStatistics:
+        """
+        Versión optimizada que procesa solo 1 de cada 'sample_rate' frames para mayor velocidad
+        sample_rate=3 significa procesar 1 de cada 3 frames (3x más rápido)
+        """
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video no encontrado: {video_path}")
+        
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise ValueError(f"No se pudo abrir el video: {video_path}")
+        
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        duration = total_frames / fps if fps > 0 else 0
+        
+        # Calcular frames a procesar
+        frames_to_process = total_frames // sample_rate
+        estimated_duration = duration / sample_rate
+        
+        print(f"Procesando video optimizado: {video_path}")
+        print(f"Frames totales: {total_frames}, FPS: {fps:.2f}, Duración: {duration:.2f}s")
+        print(f"Frames a procesar: {frames_to_process} (1 de cada {sample_rate})")
+        print(f"Tiempo estimado: {estimated_duration:.2f}s (vs {duration:.2f}s original)")
+        
+        # Configurar video writer si se especifica output
+        out = None
+        if output_path:
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        
+        self.hit_events.clear()
+        self.last_hit_frame.clear()
+        self.match_stats = MatchStatistics(
+            total_frames=total_frames,
+            video_duration=duration,
+            fps=fps
+        )
+        
+        try:
+            with tqdm(total=frames_to_process, desc="Analizando partido (optimizado)", unit="frames") as pbar:
+                frame_number = 0
+                processed_frames = 0
+                
+                while cap.isOpened() and processed_frames < frames_to_process:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    
+                    # Solo procesar 1 de cada 'sample_rate' frames
+                    if frame_number % sample_rate == 0:
+                        timestamp = frame_number / fps if fps > 0 else 0
+                        
+                        # Detectar jugadores y pelota
+                        player_detections = self.player_detector.process_frame(frame)
+                        ball_detections = self.ball_detector.process_frame(frame)
+                        
+                        # Detectar golpes en este frame
+                        frame_hits = self._detect_hits_in_frame(frame, frame_number, timestamp)
+                        self.hit_events.extend(frame_hits)
+                        
+                        # Crear frame anotado si hay output
+                        if out:
+                            annotated_frame = self._create_annotated_frame(
+                                frame, player_detections, ball_detections, frame_hits, frame_number, height
+                            )
+                            out.write(annotated_frame)
+                        
+                        processed_frames += 1
+                        pbar.update(1)
+                        
+                        if frame_hits:
+                            pbar.set_description(f"Analizando partido (Golpes: {len(self.hit_events)})")
+                    
+                    frame_number += 1
+                    
+                    # Saltar frames no procesados
+                    if frame_number % sample_rate != 0:
+                        cap.read()  # Leer y descartar frame
+                    
+        finally:
+            cap.release()
+            if out:
+                out.release()
+        
+        # Ajustar estadísticas basado en el sample rate
+        self._calculate_final_statistics()
+        self.match_stats.total_hits = int(len(self.hit_events) * sample_rate)
+        
+        return self.match_stats
+
+    def _create_annotated_frame(self, frame, player_detections, ball_detections, frame_hits, frame_number, height):
+        """Crear frame anotado con detecciones y golpes"""
+        annotated_frame = frame.copy()
+        
+        # Dibujar detecciones de jugadores
+        for player_detection in player_detections:
+            x1, y1, x2, y2 = map(int, player_detection.box)
+            player_id = int(player_detection.class_id)
+            confidence = player_detection.confidence
+            
+            # Color basado en el ID del jugador
+            color = (0, 255, 0) if player_id % 2 == 0 else (255, 0, 0)  # Verde o Azul
+            
+            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
+            
+            label = f"Player {player_id} ({confidence:.2f})"
+            label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+            cv2.rectangle(annotated_frame, (x1, y1 - label_size[1] - 10), 
+                        (x1 + label_size[0], y1), color, -1)
+            cv2.putText(annotated_frame, label, (x1, y1 - 5), 
+                      cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        
+        # Dibujar detecciones de pelota
+        for ball_detection in ball_detections:
+            x1, y1, x2, y2 = map(int, ball_detection.box)
+            confidence = ball_detection.confidence
+            
+            # Color rojo para la pelota
+            color = (0, 0, 255)  # BGR - Rojo
+            
+            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
+            
+            label = f"Ball ({confidence:.2f})"
+            label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+            cv2.rectangle(annotated_frame, (x1, y1 - label_size[1] - 10), 
+                        (x1 + label_size[0], y1), color, -1)
+            cv2.putText(annotated_frame, label, (x1, y1 - 5), 
+                      cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        
+        # Dibujar golpes detectados en este frame
+        for hit in frame_hits:
+            # Dibujar línea entre jugador y pelota
+            player_center_x = int((hit.player_box[0] + hit.player_box[2]) / 2)
+            player_center_y = int((hit.player_box[1] + hit.player_box[3]) / 2)
+            ball_center_x = int((hit.ball_box[0] + hit.ball_box[2]) / 2)
+            ball_center_y = int((hit.ball_box[1] + hit.ball_box[3]) / 2)
+            
+            # Línea amarilla para golpes
+            cv2.line(annotated_frame, (player_center_x, player_center_y), 
+                   (ball_center_x, ball_center_y), (0, 255, 255), 3)
+            
+            # Texto de golpe
+            hit_text = f"HIT! Player {hit.player_id}"
+            cv2.putText(annotated_frame, hit_text, (10, 30), 
+                      cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 3)
+        
+        # Agregar información del frame
+        frame_info = f"Frame: {frame_number} | Hits: {len(self.hit_events)}"
+        cv2.putText(annotated_frame, frame_info, (10, height - 20), 
+                  cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        
+        return annotated_frame
+    
     def _calculate_final_statistics(self) -> None:
         self.match_stats.total_hits = len(self.hit_events)
         

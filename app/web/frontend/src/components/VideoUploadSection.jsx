@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Upload, Play, FileVideo, Loader2, CheckCircle } from "lucide-react";
+import { Upload, Play, FileVideo, Loader2, CheckCircle, Trophy, Users, Target } from "lucide-react";
 import padelApi from "../services/padelApi";
 
 const VideoUploadSection = ({ onVideoUpload, onVideoProcessed, isProcessing }) => {
@@ -92,11 +92,12 @@ const VideoUploadSection = ({ onVideoUpload, onVideoProcessed, isProcessing }) =
           viewport={{ once: true }}
         >
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Analiza tu Partido
+            Analiza tu Partido de Padel
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Sube un video de tu partido de padel y obtén análisis detallado 
-            con estadísticas de rendimiento, conteo de golpes y más.
+            Sube un video de tu partido y obtén análisis detallado con estadísticas 
+            de rendimiento, conteo de golpes, velocidad de pelota y más métricas 
+            para mejorar tu juego.
           </p>
         </motion.div>
 
@@ -137,18 +138,22 @@ const VideoUploadSection = ({ onVideoUpload, onVideoProcessed, isProcessing }) =
           >
             {!selectedFile ? (
               <>
-                <Upload className="w-16 h-16 text-gray-400 mx-auto mb-6" />
+                <div className="flex justify-center mb-6">
+                  <div className="w-20 h-20 bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-full flex items-center justify-center">
+                    <Upload className="w-10 h-10 text-gray-400" />
+                  </div>
+                </div>
                 <h3 className="text-2xl font-semibold text-white mb-4">
-                  Arrastra tu video aquí
+                  Arrastra tu video de padel aquí
                 </h3>
                 <p className="text-gray-400 mb-6">
-                  O haz clic para seleccionar un archivo
+                  O haz clic para seleccionar un archivo de video
                 </p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-8 py-3 rounded-full hover:from-green-600 hover:to-blue-600 transition-all duration-300"
                 >
-                  Seleccionar Video
+                  Seleccionar Video de Padel
                 </button>
                 <input
                   ref={fileInputRef}
@@ -157,6 +162,9 @@ const VideoUploadSection = ({ onVideoUpload, onVideoProcessed, isProcessing }) =
                   onChange={handleFileSelect}
                   className="hidden"
                 />
+                <p className="text-sm text-gray-500 mt-4">
+                  Formatos soportados: MP4, AVI, MOV, WMV, FLV, WebM
+                </p>
               </>
             ) : (
               <div className="space-y-6">
@@ -175,12 +183,12 @@ const VideoUploadSection = ({ onVideoUpload, onVideoProcessed, isProcessing }) =
                   {isProcessing ? (
                     <div className="flex items-center space-x-2">
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Procesando...</span>
+                      <span>Analizando Partido...</span>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2">
                       <Play className="w-5 h-5" />
-                      <span>Analizar Video</span>
+                      <span>Analizar Partido de Padel</span>
                     </div>
                   )}
                 </button>
@@ -197,7 +205,7 @@ const VideoUploadSection = ({ onVideoUpload, onVideoProcessed, isProcessing }) =
             >
               <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
                 <span>
-                  {useRealApi ? 'Procesando video con IA...' : 'Simulando procesamiento...'}
+                  {useRealApi ? 'Analizando partido con IA...' : 'Simulando análisis...'}
                 </span>
                 <span>{uploadProgress}%</span>
               </div>
@@ -212,35 +220,35 @@ const VideoUploadSection = ({ onVideoUpload, onVideoProcessed, isProcessing }) =
             </motion.div>
           )}
 
-          {/* Features */}
+          {/* Padel-Specific Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 pt-12 border-t border-white/10">
             <div className="text-center">
               <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Play className="w-6 h-6 text-green-400" />
+                <Target className="w-6 h-6 text-green-400" />
               </div>
-              <h4 className="text-white font-semibold mb-2">Análisis Automático</h4>
+              <h4 className="text-white font-semibold mb-2">Análisis de Golpes</h4>
               <p className="text-gray-400 text-sm">
-                Procesamiento inteligente con IA
+                Conteo automático de golpes por jugador
               </p>
             </div>
             
             <div className="text-center">
               <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-6 h-6 text-blue-400" />
+                <Users className="w-6 h-6 text-blue-400" />
               </div>
-              <h4 className="text-white font-semibold mb-2">Resultados Precisos</h4>
+              <h4 className="text-white font-semibold mb-2">Detección de Jugadores</h4>
               <p className="text-gray-400 text-sm">
-                Estadísticas detalladas y confiables
+                Identificación y seguimiento en tiempo real
               </p>
             </div>
             
             <div className="text-center">
               <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-6 h-6 text-purple-400" />
+                <Trophy className="w-6 h-6 text-purple-400" />
               </div>
-              <h4 className="text-white font-semibold mb-2">Tiempo Real</h4>
+              <h4 className="text-white font-semibold mb-2">Estadísticas Completas</h4>
               <p className="text-gray-400 text-sm">
-                Análisis rápido y eficiente
+                Métricas detalladas de rendimiento
               </p>
             </div>
           </div>

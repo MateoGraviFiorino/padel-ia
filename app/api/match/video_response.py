@@ -8,3 +8,4 @@ class UploadVideoResponse(BaseModel):
     fps: float
     filename: str
     message: str
+    processed_video_path: str = None

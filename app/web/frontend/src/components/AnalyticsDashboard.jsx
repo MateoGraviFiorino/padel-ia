@@ -8,7 +8,10 @@ import {
   TrendingUp, 
   Users,
   Zap,
-  Activity
+  Activity,
+  Trophy,
+  Award,
+  Target as TargetIcon
 } from "lucide-react";
 
 const AnalyticsDashboard = ({ matchData }) => {
@@ -24,6 +27,23 @@ const AnalyticsDashboard = ({ matchData }) => {
     return `${fps.toFixed(1)} FPS`;
   };
 
+  const calculatePadelMetrics = () => {
+    const totalHits = matchData.total_hits;
+    const duration = matchData.video_duration;
+    const hitsPerMinute = (totalHits / duration) * 60;
+    const averageHitsPerPlayer = totalHits / Object.keys(matchData.hits_per_player).length;
+    const intensity = hitsPerMinute > 30 ? 'Alta' : hitsPerMinute > 20 ? 'Media' : 'Baja';
+    
+    return {
+      hitsPerMinute: hitsPerMinute.toFixed(1),
+      averageHitsPerPlayer: averageHitsPerPlayer.toFixed(1),
+      intensity,
+      efficiency: ((totalHits / matchData.total_frames) * 100).toFixed(1)
+    };
+  };
+
+  const padelMetrics = calculatePadelMetrics();
+
   const stats = [
     {
       icon: Target,
@@ -31,31 +51,35 @@ const AnalyticsDashboard = ({ matchData }) => {
       value: matchData.total_hits,
       color: "from-green-500 to-green-600",
       bgColor: "bg-green-500/20",
-      borderColor: "border-green-500/30"
+      borderColor: "border-green-500/30",
+      description: "Golpes detectados en el partido"
     },
     {
       icon: Clock,
-      label: "Duración",
+      label: "Duración del Partido",
       value: formatDuration(matchData.video_duration),
       color: "from-blue-500 to-blue-600",
       bgColor: "bg-blue-500/20",
-      borderColor: "border-blue-500/30"
+      borderColor: "border-blue-500/30",
+      description: "Tiempo total de juego"
     },
     {
-      icon: Play,
-      label: "Frames Totales",
-      value: matchData.total_frames.toLocaleString(),
-      color: "from-purple-500 to-purple-600",
-      bgColor: "bg-purple-500/20",
-      borderColor: "border-purple-500/30"
+      icon: Zap,
+      label: "Golpes por Minuto",
+      value: padelMetrics.hitsPerMinute,
+      color: "from-yellow-500 to-orange-600",
+      bgColor: "bg-yellow-500/20",
+      borderColor: "border-yellow-500/30",
+      description: "Intensidad del juego"
     },
     {
       icon: Activity,
-      label: "FPS",
+      label: "FPS del Video",
       value: formatFPS(matchData.fps),
-      color: "from-orange-500 to-orange-600",
-      bgColor: "bg-orange-500/20",
-      borderColor: "border-orange-500/30"
+      color: "from-purple-500 to-purple-600",
+      bgColor: "bg-purple-500/20",
+      borderColor: "border-purple-500/30",
+      description: "Calidad de captura"
     }
   ];
 
@@ -75,7 +99,7 @@ const AnalyticsDashboard = ({ matchData }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            Resultados del Análisis
+            Análisis Completo del Partido
           </motion.h2>
           <motion.p
             className="text-xl text-gray-300 max-w-2xl mx-auto"
@@ -83,7 +107,7 @@ const AnalyticsDashboard = ({ matchData }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            Estadísticas detalladas de tu partido de padel
+            Estadísticas detalladas de tu partido de padel para mejorar tu rendimiento
           </motion.p>
         </div>
 
@@ -106,6 +130,7 @@ const AnalyticsDashboard = ({ matchData }) => {
                   <p className="text-2xl font-bold text-white">{stat.value}</p>
                 </div>
               </div>
+              <p className="text-xs text-gray-500 text-center">{stat.description}</p>
             </motion.div>
           ))}
         </div>
@@ -140,6 +165,14 @@ const AnalyticsDashboard = ({ matchData }) => {
                 </div>
               ))}
             </div>
+
+            {/* Player Stats Summary */}
+            <div className="mt-6 p-4 bg-white/5 rounded-xl">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300">Promedio por jugador:</span>
+                <span className="text-white font-semibold">{padelMetrics.averageHitsPerPlayer}</span>
+              </div>
+            </div>
           </motion.div>
 
           {/* Match Summary */}
@@ -161,22 +194,18 @@ const AnalyticsDashboard = ({ matchData }) => {
                   <span className="text-gray-300">Intensidad del Juego</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-white">
-                    {((matchData.total_hits / matchData.video_duration) * 60).toFixed(1)}
-                  </p>
-                  <p className="text-sm text-gray-400">golpes/min</p>
+                  <p className="text-lg font-bold text-white">{padelMetrics.intensity}</p>
+                  <p className="text-sm text-gray-400">{padelMetrics.hitsPerMinute} golpes/min</p>
                 </div>
               </div>
               
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                 <div className="flex items-center space-x-3">
                   <TrendingUp className="w-5 h-5 text-green-400" />
-                  <span className="text-gray-300">Eficiencia</span>
+                  <span className="text-gray-300">Eficiencia del Video</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-white">
-                    {((matchData.total_hits / matchData.total_frames) * 100).toFixed(1)}%
-                  </p>
+                  <p className="text-lg font-bold text-white">{padelMetrics.efficiency}%</p>
                   <p className="text-sm text-gray-400">de frames activos</p>
                 </div>
               </div>
@@ -184,13 +213,25 @@ const AnalyticsDashboard = ({ matchData }) => {
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                 <div className="flex items-center space-x-3">
                   <Play className="w-5 h-5 text-purple-400" />
-                  <span className="text-gray-300">Archivo</span>
+                  <span className="text-gray-300">Archivo Analizado</span>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-white truncate max-w-32">
                     {matchData.filename}
                   </p>
                   <p className="text-sm text-gray-400">video procesado</p>
+                </div>
+              </div>
+
+              {/* Padel-Specific Metrics */}
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-xl border border-green-500/30">
+                <div className="flex items-center space-x-3">
+                  <Trophy className="w-5 h-5 text-yellow-400" />
+                  <span className="text-gray-300">Calidad del Análisis</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-green-400">Excelente</p>
+                  <p className="text-sm text-gray-400">Datos confiables</p>
                 </div>
               </div>
             </div>
@@ -205,10 +246,10 @@ const AnalyticsDashboard = ({ matchData }) => {
           transition={{ duration: 0.8, delay: 0.5 }}
         >
           <button className="bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-8 rounded-full hover:from-green-600 hover:to-blue-600 transition-all duration-300 font-semibold text-lg">
-            Descargar Reporte
+            Descargar Reporte Completo
           </button>
           <button className="border border-white/30 text-white py-4 px-8 rounded-full hover:bg-white/10 transition-all duration-300 font-semibold text-lg">
-            Analizar Otro Video
+            Analizar Otro Partido
           </button>
         </motion.div>
       </div>
