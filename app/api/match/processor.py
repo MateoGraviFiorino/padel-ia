@@ -1,115 +1,42 @@
+import os
+import base64
+import datetime
+import shutil
+
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
 from fastapi.responses import FileResponse
 from pathlib import Path
 import tempfile
-import os
-import base64
+from app.match import PadelMatchProcessor
 from .video_response import UploadVideoResponse
 from app.match import PadelMatchProcessor
-from app.match import PadelMatchProcessor
-import datetime
 
 match_router = APIRouter(prefix="/match", tags=["match"])
 
 def get_match_processor() -> PadelMatchProcessor:
     return PadelMatchProcessor()
 
-
-
-
 @match_router.post("/upload-video", response_model=UploadVideoResponse)
 async def upload_and_process_video(
     file: UploadFile = File(...),
     match_processor: PadelMatchProcessor = Depends(get_match_processor)
 ) -> UploadVideoResponse:
-    try:
-        # Validar tipo de archivo
-        if not file.content_type.startswith('video/'):
-            raise HTTPException(status_code=400, detail="Solo se permiten archivos de video")
-        
-        # Crear archivo temporal para el video original
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file.filename.split('.')[-1]}") as temp_file:
-            # Leer y escribir el contenido del archivo
-            content = await file.read()
-            temp_file.write(content)
-            temp_file_path = temp_file.name
-        
-        # Crear archivo temporal para el video procesado
-        base_name = file.filename
-        for ext in ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv']:
-            if base_name.endswith(ext):
-                base_name = base_name.replace(ext, '')
-                break
-        
-        # Crear directorio temporal específico para este video
-        import uuid
-        video_id = str(uuid.uuid4())[:8]
-        temp_dir = os.path.join(tempfile.gettempdir(), f"padel_video_{video_id}")
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        processed_video_path = os.path.join(temp_dir, f"{base_name}_processed.mp4")
-        
-        print(f"🎬 Procesando video: {file.filename}")
-        print(f"📁 Archivo temporal original: {temp_file_path}")
-        print(f"🎯 Archivo procesado destino: {processed_video_path}")
-        print(f"📂 Directorio temporal: {temp_dir}")
-        
-        try:
-            # Primero procesar el video para obtener estadísticas (sin generar video)
-            print("🔍 Analizando video para detectar golpes...")
-            stats = match_processor.process_video(temp_file_path)
-            
-            # Luego generar el video procesado con las detecciones
-            print("🎥 Generando video procesado con inferencias...")
-            stats_with_video = match_processor.process_video_with_output(
-                temp_file_path, 
-                output_path=processed_video_path
-            )
-            
-            # Usar las estadísticas del video procesado
-            final_stats = stats_with_video
-            
-            # Verificar que el video procesado se creó
-            if os.path.exists(processed_video_path):
-                file_size = os.path.getsize(processed_video_path)
-                print(f"✅ Video procesado creado exitosamente: {processed_video_path}")
-                print(f"📊 Tamaño del archivo: {file_size} bytes")
-                
-                if file_size < 1000:  # Menos de 1KB indica error
-                    print("⚠️ Advertencia: Video procesado muy pequeño, puede haber error")
-                    processed_video_path = None
-            else:
-                print("❌ Error: No se pudo generar el video procesado")
-                processed_video_path = None
-            
-            print(f"🏓 Estadísticas finales:")
-            print(f"   - Total de golpes: {final_stats.total_hits}")
-            print(f"   - Golpes por jugador: {final_stats.hits_per_player}")
-            print(f"   - Duración: {final_stats.video_duration:.2f}s")
-            print(f"   - FPS: {final_stats.fps:.2f}")
-            
-            return UploadVideoResponse(
-                total_hits=final_stats.total_hits,
-                hits_per_player=final_stats.hits_per_player,
-                total_frames=final_stats.total_frames,
-                video_duration=final_stats.video_duration,
-                fps=final_stats.fps,
-                filename=file.filename,
-                message="Video procesado exitosamente",
-                processed_video_path=processed_video_path
-            )
-        finally:
-            # Limpiar archivo temporal original
-            if os.path.exists(temp_file_path):
-                os.unlink(temp_file_path)
-                print(f"🗑️ Archivo temporal original eliminado: {temp_file_path}")
-                
-    except Exception as e:
-        print(f"❌ Error procesando video: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error procesando video: {str(e)}")
+    video_path = os.path.join("data", file.filename)
 
+    with open(video_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    stats = match_processor.process_video(video_path)
+    
+    return UploadVideoResponse(
+        total_hits=stats.total_hits,
+        hits_per_player=stats.hits_per_player,
+        total_frames=stats.total_frames,
+        video_duration=stats.video_duration,
+        fps=stats.fps,
+        filename=file.filename,
+        message="Video procesado exitosamente"
+    )
 
 @match_router.get("/download-processed-video/{filename}")
 async def download_processed_video(filename: str):
