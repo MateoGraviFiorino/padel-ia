@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from pathlib import Path
 
 from app.api import match_router, status_router
 
@@ -30,7 +29,7 @@ app.include_router(status_router)
 
 if __name__ == "__main__":
     uvicorn.run(
-        "app.main:app",
+        "__main__:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
