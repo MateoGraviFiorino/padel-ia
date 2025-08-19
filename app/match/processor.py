@@ -16,7 +16,7 @@ class PadelMatchProcessor:
     hit_distance_threshold: float = 70.0 
     min_distance_threshold: float = 30.0 
     min_frames_between_hits: int = 25  
-    min_confidence_threshold: float = 0.75 
+    min_confidence_threshold: float = 0.50 
     player_detector: PlayerYoloDetector = field(default_factory=PlayerYoloDetector)
     ball_detector: BallYoloDetector = field(default_factory=BallYoloDetector)
     match_stats: MatchStatistics = field(default_factory=MatchStatistics)
