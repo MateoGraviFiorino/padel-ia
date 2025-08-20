@@ -23,6 +23,7 @@ async def upload_and_process_video(
 ) -> UploadVideoResponse:
     video_path = os.path.join("data", file.filename)
 
+    os.makedirs(os.path.dirname(video_path), exist_ok=True)  # <-- Añade esta línea antes de abrir el archivo
     with open(video_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
