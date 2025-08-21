@@ -181,8 +181,38 @@ class PadelMatchProcessor:
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         duration = total_frames / fps if fps > 0 else 0
         
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        # Intentar diferentes codecs en orden de compatibilidad
+        codecs_to_try = [
+            ('mp4v', '.mp4'),      # MP4 nativo de OpenCV
+            ('XVID', '.avi'),      # AVI como fallback
+            ('MJPG', '.avi')       # Motion JPEG como último recurso
+        ]
+        
+        out = None
+        processed_path = None
+        
+        for codec, extension in codecs_to_try:
+            try:
+                fourcc = cv2.VideoWriter_fourcc(*codec)
+                test_path = output_path.replace('.mp4', extension)
+                out = cv2.VideoWriter(test_path, fourcc, fps, (width, height))
+                
+                if out.isOpened():
+                    print(f"✅ Codec {codec} inicializado correctamente")
+                    processed_path = test_path
+                    break
+                else:
+                    print(f"⚠️ Codec {codec} falló, probando siguiente...")
+                    out.release()
+            except Exception as e:
+                print(f"⚠️ Error con codec {codec}: {e}")
+                if out:
+                    out.release()
+        
+        if not out or not out.isOpened():
+            raise ValueError("No se pudo inicializar ningún codec de video")
+        
+    # NOTE: la conversión a H.264 se realizará después de escribir el video (más abajo)
         
         self.hit_events.clear()
         self.last_hit_frame.clear()
@@ -293,10 +323,43 @@ class PadelMatchProcessor:
         finally:
             cap.release()
             out.release()
-        
+
+        # Después de cerrar los recursos, intentar convertir a H.264 para compatibilidad web
+        try:
+            import subprocess, shutil
+            ffmpeg_path = shutil.which('ffmpeg')
+            if ffmpeg_path and processed_path:
+                mp4_h264_path = processed_path.rsplit('.', 1)[0] + '_h264.mp4'
+                print(f"🔄 Intentando conversión a H.264 con ffmpeg: {ffmpeg_path}")
+                try:
+                    proc = subprocess.run([
+                        ffmpeg_path, '-y', '-i', processed_path,
+                        '-c:v', 'libx264', '-preset', 'fast', '-pix_fmt', 'yuv420p',
+                        '-c:a', 'aac', mp4_h264_path
+                    ], check=True, capture_output=True, text=True)
+                    print(f"✅ ffmpeg output: {proc.stdout}\n{proc.stderr}")
+                    if os.path.exists(mp4_h264_path):
+                        processed_path = mp4_h264_path
+                        print(f"✅ Video convertido a MP4 H.264: {mp4_h264_path}")
+                except subprocess.CalledProcessError as e:
+                    print(f"❌ ffmpeg falló: returncode={e.returncode} stdout={e.stdout} stderr={e.stderr}")
+            else:
+                print("⚠️ ffmpeg no encontrado en PATH. No se realizará re-encoding. Instala ffmpeg en la VM y añade al PATH para habilitar conversión H.264.")
+                print("   Windows: descargar https://ffmpeg.org/download.html o https://www.gyan.dev/ffmpeg/builds/ y añadir la carpeta bin al PATH")
+        except Exception as e:
+            print(f"⚠️ Error al intentar la conversión con ffmpeg: {e}")
+        except Exception as e:
+            print(f"⚠️ Error al intentar la conversión con ffmpeg: {e}")
+
         self._calculate_final_statistics()
         
-        print(f"Video procesado guardado en: {output_path}")
+        # Retornar la ruta del archivo procesado (puede ser MP4 o AVI)
+        final_path = processed_path if processed_path else output_path
+        print(f"Video procesado guardado en: {final_path}")
+        
+        # Actualizar el atributo para que el API pueda acceder
+        self.processed_video_path = final_path
+        
         return self.match_stats
     
     def process_video_optimized(self, video_path: str, output_path: str = None, sample_rate: int = 5) -> MatchStatistics:
@@ -329,8 +392,20 @@ class PadelMatchProcessor:
         # Configurar video writer si se especifica output
         out = None
         if output_path:
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # mp4v - Compatible sin dependencias externas
             out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+            
+            # Verificar que el VideoWriter se inicializó correctamente
+            if not out.isOpened():
+                print("⚠️ mp4v falló, probando codec alternativo...")
+                # Probar codec alternativo
+                fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                out = cv2.VideoWriter(output_path.replace('.mp4', '.avi'), fourcc, fps, (width, height))
+                if not out.isOpened():
+                    raise ValueError("No se pudo inicializar ningún codec de video")
+                print("✅ Usando codec XVID como alternativa")
+            else:
+                print("✅ Codec mp4v inicializado correctamente")
         
         self.hit_events.clear()
         self.last_hit_frame.clear()

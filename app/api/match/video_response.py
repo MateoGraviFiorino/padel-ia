@@ -9,3 +9,4 @@ class UploadVideoResponse(BaseModel):
     filename: str
     message: str
     processed_video_path: str = None
+    processed_video_filename: str = None

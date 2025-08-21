@@ -8,6 +8,7 @@ function App() {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [report, setReport] = useState(null);
   const [processedVideoUrl, setProcessedVideoUrl] = useState(null);
+  const [useMjpegFallback, setUseMjpegFallback] = useState(false);
 
   // Función para renderizar Markdown a HTML
   const renderMarkdown = (markdown) => {
@@ -186,9 +187,9 @@ function App() {
       setUploadProgress(0);
       
       // Si hay video procesado, crear URL para mostrarlo
-      if (result.processed_video_path) {
-        // Crear URL para streaming del video procesado desde el backend
-        const videoUrl = `http://localhost:8000/match/stream-processed-video/${encodeURIComponent(result.filename)}`;
+      if (result.processed_video_filename) {
+        // Usar el nombre real del archivo procesado devuelto por el backend
+        const videoUrl = `http://localhost:8000/match/stream-processed-video/${encodeURIComponent(result.processed_video_filename)}`;
         setProcessedVideoUrl(videoUrl);
       }
       
@@ -293,27 +294,67 @@ function App() {
         </div>
 
         {/* Video Procesado con Inferencias */}
-        {processedVideoUrl && (
+        {processedVideoUrl ? (
           <div className="py-20">
             <div className="max-w-4xl mx-auto">
               <h2 className="text-3xl font-bold text-white mb-8 text-center">
                 Video Procesado con Análisis de IA
               </h2>
               <div className="bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 p-8">
+                {/* Información de debug */}
+                <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                  <p className="text-blue-400 text-sm">
+                    🔍 URL del video: {processedVideoUrl}
+                  </p>
+                  <p className="text-blue-400 text-sm">
+                    📁 Nombre del archivo: {matchData?.filename}
+                  </p>
+                </div>
+                
+                {/* Video player */}
                 <video 
                   controls 
+                  preload="metadata"
+                  crossOrigin="anonymous"
                   className="w-full rounded-lg"
                   src={processedVideoUrl}
+                  onError={(e) => {
+                    console.error('Error cargando video:', e);
+                    console.error('Video URL:', processedVideoUrl);
+                    console.error('Error details:', e.target.error);
+                    // Activar fallback MJPEG
+                    setUseMjpegFallback(true);
+                  }}
+                  onLoadStart={() => console.log('Iniciando carga del video...')}
+                  onCanPlay={() => console.log('Video listo para reproducir')}
+                  onLoadedMetadata={() => console.log('Metadatos del video cargados')}
+                  onLoadedData={() => console.log('Datos del video cargados')}
+                  onProgress={() => console.log('Video cargando...')}
                 >
                   Tu navegador no soporta el elemento video.
                 </video>
+                {/* MJPEG fallback si el elemento video falla */}
+                {useMjpegFallback && processedVideoUrl && (
+                  <div className="mt-4">
+                    <p className="text-yellow-300 text-sm text-center">Usando fallback MJPEG (frames) porque el video no es reproducible directamente.</p>
+                    <img
+                      alt="MJPEG stream"
+                      className="w-full rounded-lg"
+                      src={processedVideoUrl.replace('/stream-processed-video/', '/stream-frames/')}
+                    />
+                  </div>
+                )}
+                
                 <div className="mt-6 text-center space-y-4">
                   <p className="text-gray-400">
                     Video con detecciones de jugadores, pelota y golpes marcados
                   </p>
                   <div className="flex justify-center space-x-4">
                     <button
-                      onClick={() => window.open(processedVideoUrl, '_blank')}
+                      onClick={() => {
+                        console.log('Abriendo video en nueva pestaña:', processedVideoUrl);
+                        window.open(processedVideoUrl, '_blank');
+                      }}
                       className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-2 rounded-full hover:from-blue-600 hover:to-purple-600 transition-all duration-300"
                     >
                       🔗 Ver en Nueva Pestaña
@@ -325,6 +366,59 @@ function App() {
                     >
                       📥 Descargar Video Procesado
                     </a>
+                  </div>
+                  
+                  {/* Botón de prueba del endpoint */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(processedVideoUrl);
+                        console.log('Respuesta del endpoint:', response.status, response.statusText);
+                        if (response.ok) {
+                          alert('✅ Endpoint funcionando correctamente');
+                        } else {
+                          alert(`❌ Error en endpoint: ${response.status}`);
+                        }
+                      } catch (error) {
+                        console.error('Error probando endpoint:', error);
+                        alert(`❌ Error: ${error.message}`);
+                      }
+                    }}
+                    className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-full hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 text-sm"
+                  >
+                    🧪 Probar Endpoint
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : matchData && (
+          <div className="py-20">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-3xl font-bold text-white mb-8 text-center">
+                ⚠️ Video Procesado No Disponible
+              </h2>
+              <div className="bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 p-8">
+                <div className="text-center space-y-4">
+                  <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-4xl">⚠️</span>
+                  </div>
+                  <h3 className="text-xl font-semibold text-yellow-400 mb-2">
+                    Video Procesado No Generado
+                  </h3>
+                  <p className="text-gray-300 mb-4">
+                    El análisis se completó exitosamente, pero no se pudo generar el video procesado con inferencias.
+                  </p>
+                  <p className="text-gray-400 text-sm">
+                    Esto puede deberse a limitaciones técnicas o errores en el procesamiento de video.
+                  </p>
+                  <div className="mt-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                    <p className="text-blue-400 text-sm">
+                      📊 Estadísticas disponibles: {matchData.total_hits} golpes detectados
+                    </p>
+                    <p className="text-blue-400 text-sm">
+                      🎯 Puedes generar el reporte profesional con los datos analizados
+                    </p>
                   </div>
                 </div>
               </div>
@@ -394,7 +488,7 @@ function App() {
                     ) : (
                       <div className="flex items-center space-x-2">
                         <span className="text-xl">🤖</span>
-                        <span>Generar Reporte Profesional con ChatGPT</span>
+                        <span>Reporte Profesional</span>
                       </div>
                     )}
                   </button>

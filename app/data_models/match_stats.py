@@ -6,3 +6,4 @@ class MatchStatistics(BaseModel):
     total_frames: int = Field(default=0)
     video_duration: float = Field(default=0.0)
     fps: float = Field(default=0.0)
+    processed_video_path: str = Field(default="")  # Ruta del video procesado
