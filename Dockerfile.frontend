@@ -1,0 +1,17 @@
+# Usamos Node 20 (ajustar según tu versión)
+FROM node:20
+
+WORKDIR /app
+
+# Copiamos package.json y package-lock.json para instalar dependencias
+COPY web/frontend/package*.json ./
+
+RUN npm install
+
+# Copiamos el resto del frontend
+COPY web/frontend ./
+
+# Exponemos el puerto de desarrollo de React
+EXPOSE 5173
+
+CMD ["npm", "run", "dev"]
