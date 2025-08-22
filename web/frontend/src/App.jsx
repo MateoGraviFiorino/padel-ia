@@ -189,7 +189,7 @@ function App() {
       // Si hay video procesado, crear URL para mostrarlo
       if (result.processed_video_filename) {
         // Usar el nombre real del archivo procesado devuelto por el backend
-        const videoUrl = `http://localhost:8000/match/stream-processed-video/${encodeURIComponent(result.processed_video_filename)}`;
+        const videoUrl = `http://localhost:8000/videos/${encodeURIComponent(result.processed_video_filename)}`;
         setProcessedVideoUrl(videoUrl);
       }
       

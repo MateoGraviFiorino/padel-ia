@@ -2,6 +2,7 @@ import os
 import datetime
 import re
 
+import shutil
 import urllib
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends, Request
@@ -11,6 +12,8 @@ import cv2
 from app.match import PadelMatchProcessor
 from .video_response import UploadVideoResponse
 from app.match import PadelMatchProcessor
+import subprocess
+from pathlib import Path
 
 match_router = APIRouter(prefix="/match", tags=["match"])
 
@@ -21,7 +24,6 @@ def get_match_processor() -> PadelMatchProcessor:
 
 VIDEOS_DIR = Path("videos")
 VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
-
 
 @match_router.post("/upload-video", response_model=UploadVideoResponse)
 async def upload_and_process_video(
@@ -42,10 +44,31 @@ async def upload_and_process_video(
     processed_video_filename = f"processed_{base_name}_h264{ext}"
     output_path = str(VIDEOS_DIR / processed_video_filename)
 
+    # Procesar video (OpenCV y anotaciones)
     final_stats = match_processor.process_video_with_output(
         str(input_path),
         output_path=output_path
     )
+
+    # ---- Agregar audio silencioso para compatibilidad HTML5 ----
+    h264_with_audio = str(VIDEOS_DIR / f"processed_{base_name}_h264_audio{ext}")
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path:
+        subprocess.run([
+            ffmpeg_path, "-y",
+            "-i", output_path,
+            "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+            "-c:v", "libx264",         # <-- re-codificar a H.264
+            "-preset", "fast",
+            "-pix_fmt", "yuv420p",    # <-- formato compatible HTML5
+            "-c:a", "aac",
+            "-shortest",
+            h264_with_audio
+        ], check=True)
+        processed_video_filename = h264_with_audio.split("/")[-1]
+        output_path = h264_with_audio
+    else:
+        print("⚠️ ffmpeg no encontrado. No se agregará audio al video.")
 
     return UploadVideoResponse(
         total_hits=final_stats.total_hits,
