@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from app.api import match_router, status_router
@@ -24,6 +25,7 @@ app.add_middleware(
 # Incluir los routers
 app.include_router(match_router)
 app.include_router(status_router)
+app.mount("/videos", StaticFiles(directory="videos"), name="videos")
 
 if __name__ == "__main__":
     uvicorn.run(
