@@ -367,27 +367,6 @@ function App() {
                       📥 Descargar Video Procesado
                     </a>
                   </div>
-                  
-                  {/* Botón de prueba del endpoint */}
-                  <button
-                    onClick={async () => {
-                      try {
-                        const response = await fetch(processedVideoUrl);
-                        console.log('Respuesta del endpoint:', response.status, response.statusText);
-                        if (response.ok) {
-                          alert('✅ Endpoint funcionando correctamente');
-                        } else {
-                          alert(`❌ Error en endpoint: ${response.status}`);
-                        }
-                      } catch (error) {
-                        console.error('Error probando endpoint:', error);
-                        alert(`❌ Error: ${error.message}`);
-                      }
-                    }}
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-full hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 text-sm"
-                  >
-                    🧪 Probar Endpoint
-                  </button>
                 </div>
               </div>
             </div>
